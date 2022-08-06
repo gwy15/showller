@@ -1,0 +1,18 @@
+[server]
+tcp = ["127.0.0.1:1888"]
+uds = [] # *nix only
+
+[tmdb]
+v4_auth = "ey..."
+# proxy = "socks5h://localhost:1213"
+language = "zh-CN"
+timeout_s = 15
+
+[users]
+gwy = [
+    { id = 129195 },                 # 异世界药局
+    { id = 127714 },                 # 异世界舅舅
+    { id = 60059, offset_days = 1 }, # better call saul
+    { id = 120089 },                 # 间谍过家家
+    { id = 129516 },                 # 继母的拖油瓶
+]

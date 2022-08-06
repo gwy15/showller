@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -35,5 +36,5 @@ pub struct SeasonEpisode {
     pub overview: String,
     pub season_number: u32,
     pub episode_number: u32,
-    pub air_date: String,
+    pub air_date: NaiveDate,
 }
