@@ -7,7 +7,6 @@ use tv_calendar::{calendar::CalendarExt, config, models, tmdb};
 async fn get_show(
     show_id: u64,
     client: tmdb::Client,
-    offset_days: Option<i32>,
 ) -> Result<(models::Show, Vec<models::Season>)> {
     let show = client.get_show(show_id).await.context("get show failed")?;
 
@@ -23,16 +22,10 @@ async fn get_show(
                 ))
         })
         .collect();
-    let mut seasons = futures::future::try_join_all(futures)
+    let seasons = futures::future::try_join_all(futures)
         .await
         .with_context(|| format!("fetch seasons from TMDB failed for season {}", show.name))?;
-    let offset = offset_days.unwrap_or(0);
-    if offset != 0 {
-        let dur = chrono::Duration::days(offset as i64);
-        seasons.iter_mut().for_each(|s| {
-            s.episodes.iter_mut().for_each(|e| e.air_date += dur);
-        })
-    }
+
     Ok((show, seasons))
 }
 
@@ -52,11 +45,13 @@ async fn generate_calendar(
         let tx = tx.clone();
         let client = client.clone();
         let show_id = user_show.id;
-        let offset = user_show.offset_days;
+        let user_show = user_show.clone();
+
         let fut = async move {
-            let result = get_show(show_id, client.clone(), offset)
+            let result = get_show(show_id, client)
                 .await
-                .context("get show failed");
+                .context("get show failed")
+                .map(|(show, seasons)| (show, seasons, user_show));
             tx.send(result)
                 .await
                 .context("send show to calendar failed")?;
@@ -67,8 +62,8 @@ async fn generate_calendar(
     std::mem::drop(tx);
 
     while let Some(result) = rx.recv().await {
-        let (show, seasons) = result?;
-        calendar.insert_show_seasons(&show, &seasons);
+        let (show, seasons, user_show) = result?;
+        calendar.insert_show_seasons(&show, &seasons, user_show);
         tracing::debug!(show_name=%show.name, "show done");
     }
 
@@ -76,17 +71,11 @@ async fn generate_calendar(
 }
 
 async fn calendar(
-    name: web::Path<String>,
     config: web::Data<config::Config>,
     client: web::Data<tmdb::Client>,
 ) -> impl Responder {
-    let name = name.into_inner();
-    tracing::info!(%name, "getting calendar for user");
-    let user_shows = config.users.get(&name);
-    let user_shows = match user_shows {
-        Some(user_shows) => user_shows,
-        None => return HttpResponse::NotFound().body("user not found"),
-    };
+    tracing::info!("getting calendar");
+    let user_shows = &config.show;
 
     let calendar = match generate_calendar(user_shows, &client)
         .await
@@ -123,7 +112,7 @@ async fn main() -> Result<()> {
             .app_data(config.clone())
             .app_data(client.clone())
             .wrap(actix_web::middleware::Logger::default())
-            .route("/users/{name}/calendar", web::get().to(calendar))
+            .route("/calendar", web::get().to(calendar))
     });
 
     for tcp in server_config.tcp.iter() {

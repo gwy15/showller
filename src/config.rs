@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path};
+use std::{path::Path, sync::Arc};
 
 use anyhow::Context;
 use reqwest::ClientBuilder;
@@ -7,7 +7,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub tmdb: TmdbConfig,
-    pub users: HashMap<String, Vec<UserShow>>,
+    pub show: Vec<UserShow>,
     pub server: ServerConfig,
 }
 
@@ -55,10 +55,11 @@ impl TmdbConfig {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct UserShow {
     pub id: u64,
     pub offset_days: Option<i32>,
+    pub url: Option<Arc<str>>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -67,4 +68,13 @@ pub struct ServerConfig {
     pub tcp: Vec<std::net::SocketAddr>,
     #[serde(default)]
     pub uds: Vec<std::path::PathBuf>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[tokio::test]
+    async fn parse_config() {
+        let _c = Config::load("./examples/config.toml").await.unwrap();
+    }
 }

@@ -4,6 +4,10 @@
 
 A nice tool that generates an iCalendar format file for you to follow your favorite TV shows.
 
+# Usage
+copy `examples/config.toml` to `./config.toml` or `/config/config.toml` (preferable for docker), then visit url from 
+`http://{host}/users/{username}/calendar`.
+
 ## Source of Data
 The source of data is [TMDB (The Movie DB)](https://www.themoviedb.org/).
 
