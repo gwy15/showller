@@ -88,7 +88,9 @@ async fn calendar(
         }
     };
 
-    HttpResponse::Ok().body(calendar.to_string())
+    HttpResponse::Ok()
+        .content_type("text/calendar")
+        .body(calendar.to_string())
 }
 
 #[tokio::main]
